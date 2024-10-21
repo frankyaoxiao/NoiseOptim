@@ -7,8 +7,7 @@ import GPUtil
 from torchvision import transforms, utils
 
 
-from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like, \
-    extract_into_tensor
+from util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like
 
 
 class DDIMSamplerWithGrad(object):

@@ -1,4 +1,4 @@
-import argparse, os, sys, glob
+import argparse, os
 import cv2
 import torch
 import numpy as np
@@ -7,11 +7,8 @@ from PIL import Image
 from itertools import islice
 from pytorch_lightning import seed_everything
 
-from ldm.util import instantiate_from_config
-from ldm.models.diffusion.ddim_with_grad import DDIMSamplerWithGrad
-
-from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker
-from transformers import AutoFeatureExtractor
+from samplers.util import instantiate_from_config
+from samplers.ddim_with_grad import DDIMSamplerWithGrad
 
 from torchvision import transforms, utils
 import torch
@@ -23,17 +20,12 @@ from pathlib import Path
 from PIL import Image
 from torchvision import transforms, utils
 import random
-from helper import OptimizerDetails, get_face_text
+from helper import OptimizerDetails
 import os
 import torchvision.transforms.functional as TF
 from facenet_pytorch import MTCNN, InceptionResnetV1
 from torchvision.datasets import ImageFolder
 
-
-# load safety model
-safety_model_id = "CompVis/stable-diffusion-safety-checker"
-safety_feature_extractor = AutoFeatureExtractor.from_pretrained(safety_model_id)
-safety_checker = StableDiffusionSafetyChecker.from_pretrained(safety_model_id)
 
 
 def chunk(it, size):
@@ -92,14 +84,6 @@ def load_replacement(x):
         return x
 
 
-def check_safety(x_image):
-    safety_checker_input = safety_feature_extractor(numpy_to_pil(x_image), return_tensors="pt")
-    x_checked_image, has_nsfw_concept = safety_checker(images=x_image, clip_input=safety_checker_input.pixel_values)
-    assert x_checked_image.shape[0] == len(has_nsfw_concept)
-    for i in range(len(has_nsfw_concept)):
-        if has_nsfw_concept[i]:
-            x_checked_image[i] = load_replacement(x_checked_image[i])
-    return x_checked_image, has_nsfw_concept
 
 class Dataset(data.Dataset):
     def __init__(self, folder, image_size, data_aug=False, exts=['jpg', 'jpeg', 'png']):
@@ -496,7 +480,7 @@ def main():
     if opt.text != None:
         prompt = opt.text
     else:
-        prompt = get_face_text(opt.text_type)
+        prompt = "headshot of a woman"
 
     print(prompt)
 
