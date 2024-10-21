@@ -1,31 +1,25 @@
-import argparse, os
-import cv2
-import torch
-import numpy as np
-from omegaconf import OmegaConf
-from PIL import Image
+import argparse
+import errno
+import os
+import random
 from itertools import islice
-from pytorch_lightning import seed_everything
+from pathlib import Path
 
-from samplers.util import instantiate_from_config
-from samplers.ddim_with_grad import DDIMSamplerWithGrad
-
-from torchvision import transforms, utils
+import cv2
+import numpy as np
+import PIL
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import PIL
-from torch.utils import data
-from pathlib import Path
-from PIL import Image
-from torchvision import transforms, utils
-import random
-from helper import OptimizerDetails
-import os
 import torchvision.transforms.functional as TF
 from facenet_pytorch import MTCNN, InceptionResnetV1
+from omegaconf import OmegaConf
+from PIL import Image
+from samplers.ddim_with_grad import DDIMSamplerWithGrad
+from torch.utils import data
+from torchvision import transforms, utils
 from torchvision.datasets import ImageFolder
-
+from util import instantiate_from_config, OptimizerDetails
 
 
 def chunk(it, size):
@@ -77,12 +71,11 @@ def load_replacement(x):
     try:
         hwc = x.shape
         y = Image.open("assets/rick.jpeg").convert("RGB").resize((hwc[1], hwc[0]))
-        y = (np.array(y)/255.0).astype(x.dtype)
+        y = (np.array(y) / 255.0).astype(x.dtype)
         assert y.shape == x.shape
         return y
     except Exception:
         return x
-
 
 
 class Dataset(data.Dataset):
@@ -109,6 +102,7 @@ class Dataset(data.Dataset):
 
         return self.transform(img)
 
+
 def return_cv2(img, path):
     black = [255, 255, 255]
     img = (img + 1) * 0.5
@@ -117,13 +111,8 @@ def return_cv2(img, path):
     img = cv2.copyMakeBorder(img, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=black)
     return img
 
-def cycle(dl):
-    while True:
-        for data in dl:
-            yield data
 
-import os
-import errno
+
 def create_folder(path):
     try:
         os.mkdir(path)
@@ -162,7 +151,7 @@ class FaceRecognition(nn.Module):
             # If input is already a tensor, assume it's in the range [-1, 1]
             image = (image + 1) / 2.0  # Convert from [-1, 1] to [0, 1]
             image = image.clamp(0, 1)
-            
+
             # Ensure the tensor is 4D (batch, channels, height, width)
             if image.dim() == 5:
                 image = image.squeeze(0)  # Remove the extra dimension
@@ -249,26 +238,26 @@ class FaceRecognition(nn.Module):
         # Normalize embeddings
         emb1_norm = F.normalize(emb1, p=2, dim=1)
         emb2_norm = F.normalize(emb2, p=2, dim=1)
-        
+
         # Calculate cosine similarity
         cos_similarity = F.cosine_similarity(emb1_norm, emb2_norm, dim=1)
-        
+
         # Calculate theta
         theta = torch.acos(torch.clamp(cos_similarity, -1.0 + 1e-7, 1.0 - 1e-7))
-        
+
         # Calculate ArcFace logits
         arcface_logits = s * torch.cos(theta + m)
-        
+
         # Calculate ArcFace loss (assuming same identity, target=1)
         arcface_loss = -torch.log(torch.exp(arcface_logits) / (torch.exp(arcface_logits) + 1))
-        
+
         return arcface_loss
 
     def cal_loss(self, image):
         x = TF.resize(image, (256, 256), interpolation=TF.InterpolationMode.BICUBIC)
 
         processed_image = self.get_faces(x, mtcnn_face=self.mtcnn_face)
-        utils.save_image(processed_image, f'debugging/regular_face.png')
+        utils.save_image(processed_image, f'regular_face.png')
 
         # Ensure both ground truth and processed image are 4D
         if self.ground_truth.dim() == 3:
@@ -283,21 +272,20 @@ class FaceRecognition(nn.Module):
         with torch.no_grad():
             gt_emb1 = self.resnet1(self.ground_truth)
             gt_emb2 = self.resnet2(self.ground_truth)
-        
+
         # Compute embeddings for processed_image without no_grad
         img_emb1 = self.resnet1(processed_image)
         img_emb2 = self.resnet2(processed_image)
 
         # Calculate losses
-        dist1 = F.cosine_similarity(gt_emb1, img_emb1, dim = 1)
-        dist2 = F.cosine_similarity(gt_emb2, img_emb2, dim = 1)
+        dist1 = F.cosine_similarity(gt_emb1, img_emb1, dim=1)
+        dist2 = F.cosine_similarity(gt_emb2, img_emb2, dim=1)
 
         print("Loss for first model: ", dist1)
         print("Loss for second model: ", dist2)
 
         # Minimize dist1, maximize dist2
-        loss = (10 * (1 - dist1)) ** 2 + (10 * dist2) ** 2
-        #print(f"Loss: {loss}")
+        loss = (10 * (1 - dist1)) ** 2 + .5 * (10 * dist2) ** 2
         return loss
 
     def cuda(self):
@@ -307,29 +295,19 @@ class FaceRecognition(nn.Module):
         self.ground_truth = self.ground_truth.cuda()
         return self
 
-def cycle_cat(dl):
-    while True:
-        for data in dl:
-            yield data[0]
 
-def l1_loss(input, target):
-    l = torch.abs(input - target).mean(dim=[1])
-    return l
+
 
 def get_optimation_details(args):
     mtcnn_face = not args.center_face
     print('mtcnn_face')
     print(mtcnn_face)
 
-    guidance_func = FaceRecognition(args.ground_truth_path, fr_crop=args.fr_crop, mtcnn_face=mtcnn_face).cuda()
+    guidance_func = FaceRecognition(args.input_image, fr_crop=args.fr_crop, mtcnn_face=mtcnn_face).cuda()
     operation = OptimizerDetails()
 
     operation.num_steps = args.optim_num_steps
     operation.operation_func = guidance_func
-
-    operation.optimizer = 'Adam'
-    operation.lr = args.optim_lr
-    operation.loss_func = l1_loss
 
     operation.max_iters = args.optim_max_iters
     operation.loss_cutoff = args.optim_loss_cutoff
@@ -346,6 +324,7 @@ def get_optimation_details(args):
     operation.folder = args.optim_folder
 
     return operation
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -394,7 +373,7 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/stable-diffusion/v1-inference.yaml",
+        default="configs/sd_1-4.yaml",
         help="path to config which constructs model",
     )
     parser.add_argument(
@@ -409,14 +388,6 @@ def main():
         default=1,
         help="the seed (for reproducible sampling)",
     )
-    parser.add_argument(
-        '--ground_truth_path',
-        type=str, 
-        default='test_face/person2/og_img_1.png',
-        help="path to ground truth image"
-    )
-
-
     parser.add_argument("--optim_lr", default=1e-2, type=float)
     parser.add_argument('--optim_max_iters', type=int, default=1)
     parser.add_argument('--optim_mask_type', type=int, default=1)
@@ -431,32 +402,27 @@ def main():
     parser.add_argument('--optim_folder', default='./temp/')
     parser.add_argument("--optim_num_steps", nargs="+", default=[1], type=int)
     parser.add_argument('--text_type', type=int, default=1)
-    parser.add_argument("--text", default=None)
-    parser.add_argument("--batch_size", default=1, type=int)
-    parser.add_argument('--face_folder', default='./data/face_data')
-
+    parser.add_argument("--text", required=True)
+    parser.add_argument('--input_image', type=str, required=True, help="Path to the input image")
     parser.add_argument('--fr_crop', action='store_true')
     parser.add_argument('--center_face', action='store_true')
     parser.add_argument("--trials", default=20, type=int)
-    parser.add_argument("--indexes", nargs="+", default=[0, 1, 2], type=int)
-
-
 
     opt = parser.parse_args()
     results_folder = opt.optim_folder
     create_folder(results_folder)
 
-
-    seed_everything(opt.seed)
+    torch.manual_seed(opt.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(opt.seed)
 
     config = OmegaConf.load(f"{opt.config}")
     model = load_model_from_config(config, f"{opt.ckpt}")
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model = model.to(device)
-    model = torch.nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
+    model = torch.nn.DataParallel(model, device_ids=[device])
     model.eval()
-
 
     sampler = DDIMSamplerWithGrad(model)
     operation = get_optimation_details(opt)
@@ -468,63 +434,50 @@ def main():
         transforms.Lambda(lambda t: (t * 2) - 1)
     ])
 
-    batch_size = opt.batch_size
-
-    ds = ImageFolder(root=opt.face_folder, transform=transform)
-    dl = data.DataLoader(ds, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=16,
-                                   drop_last=True)
-
+    # Load and process the single input image
+    input_image = Image.open(opt.input_image).convert('RGB')
+    og_img = transform(input_image).unsqueeze(0).to(device)
+    og_img = og_img.cuda()
 
     torch.set_grad_enabled(False)
 
-    if opt.text != None:
-        prompt = opt.text
-    else:
-        prompt = "headshot of a woman"
-
+    prompt = opt.text
     print(prompt)
 
+    # Save the original image
+    temp = (og_img + 1) * 0.5
+    utils.save_image(temp, f'{results_folder}/og_img.png')
 
-    for n, d in enumerate(dl, 0):
-        if n in opt.indexes:
-            og_img, _ = d
-            og_img = og_img.cuda()
-            temp = (og_img + 1) * 0.5
-            utils.save_image(temp, f'{results_folder}/og_img_{n}.png')
+    with torch.no_grad():
+        og_img_guide, og_img_mask = operation.operation_func(og_img, return_faces=True, mtcnn_face=True)
+        utils.save_image((og_img_mask + 1) * 0.5, f'{results_folder}/og_img_cut.png')
+        print(f"Image saved at {results_folder}/og_img_cut.png")
 
-            with torch.no_grad():
-                og_img_guide, og_img_mask = operation.operation_func(og_img, return_faces=True, mtcnn_face=True)
-                utils.save_image((og_img_mask + 1) * 0.5, f'{results_folder}/og_img_cut_{n}.png')
-                print(f"Image saved at {results_folder}/og_img_cut_{n}.png")
+    uc = None
+    if opt.scale != 1.0:
+        uc = model.module.get_learned_conditioning(1 * [""])
+    c = model.module.get_learned_conditioning(1 * [prompt])
 
-            uc = None
-            if opt.scale != 1.0:
-                uc = model.module.get_learned_conditioning(batch_size * [""])
-            c = model.module.get_learned_conditioning(batch_size * [prompt])
-            for multiple_tries in range(opt.trials):
-                shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
-                samples_ddim, start_zt = sampler.sample(S=opt.ddim_steps,
-                                                 conditioning=c,
-                                                 batch_size=batch_size,
-                                                 shape=shape,
-                                                 verbose=False,
-                                                 unconditional_guidance_scale=opt.scale,
-                                                 unconditional_conditioning=uc,
-                                                 eta=opt.ddim_eta,
-                                                 operated_image=og_img_guide,
-                                                 operation=operation,
-                                                 identifier=multiple_tries)
+    for multiple_tries in range(opt.trials):
+        shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
+        samples_ddim, start_zt = sampler.sample(
+            S=opt.ddim_steps,
+            conditioning=c,
+            batch_size=1,
+            shape=shape,
+            verbose=False,
+            unconditional_guidance_scale=opt.scale,
+            unconditional_conditioning=uc,
+            eta=opt.ddim_eta,
+            operated_image=og_img_guide,
+            operation=operation,
+            identifier=multiple_tries
+        )
 
-                x_samples_ddim = model.module.decode_first_stage(samples_ddim)
-                x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
+        x_samples_ddim = model.module.decode_first_stage(samples_ddim)
+        x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
-                utils.save_image(x_samples_ddim, f'{results_folder}/new_img_{n}_{multiple_tries}.png')
-
-
-
-
-
-
+        utils.save_image(x_samples_ddim, f'{results_folder}/new_img_{multiple_tries}.png')
 
 if __name__ == "__main__":
     main()

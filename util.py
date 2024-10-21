@@ -247,6 +247,7 @@ class HybridConditioner(nn.Module):
 def noise_like(shape, device, repeat=False):
     repeat_noise = lambda: torch.randn((1, *shape[1:]), device=device).repeat(shape[0], *((1,) * (len(shape) - 1)))
     noise = lambda: torch.randn(shape, device=device)
+    return repeat_noise() if repeat else noise()
 
 
 
@@ -266,3 +267,37 @@ def get_obj_from_str(string, reload=False):
         module_imp = importlib.import_module(module)
         importlib.reload(module_imp)
     return getattr(importlib.import_module(module, package=None), cls)
+    
+
+class OptimizerDetails:
+    def __init__(self):
+        self.num_steps = None
+        self.operation_func = None
+        self.optimizer = None # handle it on string level
+        self.lr = None
+        self.loss_func = None
+        self.max_iters = 0
+        self.loss_cutoff = None
+        self.lr_scheduler = None
+        self.warm_start = None
+        self.old_img = None
+        self.fact = 0.5
+        self.print = False
+        self.print_every = None
+        self.folder = None
+        self.tv_loss = None
+        self.guidance_3 = False
+        self.guidance_2 = False
+        self.Aug = None
+        self.optim_guidance_3_wt = 0
+        self.optim_guidance_3_iters = 1
+        self.optim_unscaled_guidance_3 = False
+        self.mask_type = 3
+        self.other_guidance_func = None
+        self.other_criterion = None
+        self.original_guidance = False
+        self.guidance_mask = None
+        self.do_guidance_3_norm = False
+        self.sampling_type = None
+        self.loss_save = None
+        self.ddpm = False
