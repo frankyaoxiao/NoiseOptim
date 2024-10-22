@@ -1,5 +1,6 @@
 ## Usage
 
+First, download sd 1.4 and put it in the main directory.
 To generate examples, use the following command:
 
 
