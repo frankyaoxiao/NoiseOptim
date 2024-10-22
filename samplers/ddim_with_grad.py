@@ -2,11 +2,7 @@
 import torch
 import numpy as np
 from tqdm import tqdm
-from functools import partial
-import GPUtil
-from torchvision import transforms, utils
-
-
+from torchvision import utils
 from util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like
 
 
@@ -82,11 +78,7 @@ class DDIMSamplerWithGrad(object):
         device = self.model.module.betas.device
         b = shape[0]
 
-        if start_zt is None:
-            img = torch.randn(shape, device=device)
-            start_zt = img
-        else:
-            img = start_zt
+        img = start_zt = torch.randn(shape, device=device) if start_zt is None else start_zt
 
         timesteps = self.ddim_timesteps
         time_range = np.flip(timesteps)
@@ -229,5 +221,3 @@ class DDIMSamplerWithGrad(object):
 
 
         return img, start_zt
-
- 
