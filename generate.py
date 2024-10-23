@@ -234,11 +234,17 @@ class FaceRecognition(nn.Module):
         else:
             return out
 
-    def cal_loss(self, image):
+    def cal_loss(self, image, timestep, image_number, base_folder):
         x = TF.resize(image, (256, 256), interpolation=TF.InterpolationMode.BICUBIC)
 
         processed_image = self.get_faces(x, mtcnn_face=self.mtcnn_face)
-        utils.save_image(processed_image, f'regular_face.png')
+        
+        # Create folder structure
+        intermediate_folder = os.path.join(base_folder, 'intermediates', f'image{image_number}')
+        os.makedirs(intermediate_folder, exist_ok=True)
+        
+        # Save the processed image
+        utils.save_image(processed_image, f'{intermediate_folder}/img_at_step_{500 - timestep}.png')
 
         # Ensure both ground truth and processed image are 4D
         if self.ground_truth.dim() == 3:
@@ -262,11 +268,11 @@ class FaceRecognition(nn.Module):
         dist1 = F.cosine_similarity(gt_emb1, img_emb1, dim=1)
         dist2 = F.cosine_similarity(gt_emb2, img_emb2, dim=1)
 
-        print("Loss for first model: ", dist1)
-        print("Loss for second model: ", dist2)
+        print(f"Timestep {timestep}: Loss for first model: {dist1.item()}")
+        print(f"Timestep {timestep}: Loss for second model: {dist2.item()}")
 
         # Minimize dist1, maximize dist2
-        loss = (10 * (1 - dist1)) ** 2 + .5 * (10 * dist2) ** 2
+        loss = (10 * (1 - dist2)) ** 2 + .5 * (10 * dist1) ** 2
         return loss
 
     def cuda(self):
@@ -305,6 +311,16 @@ def get_optimation_details(args):
     operation.folder = args.optim_folder
 
     return operation
+
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    os.environ['PYTHONHASHSEED'] = str(seed)
 
 
 def main():
@@ -393,9 +409,7 @@ def main():
     results_folder = opt.optim_folder
     create_folder(results_folder)
 
-    torch.manual_seed(opt.seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(opt.seed)
+    set_seed(opt.seed)
 
     config = OmegaConf.load(f"{opt.config}")
     model = load_model_from_config(config, f"{opt.ckpt}")
@@ -462,3 +476,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+

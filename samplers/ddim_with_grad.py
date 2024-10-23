@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from torchvision import utils
 from util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like
+import os
 
 
 class DDIMSamplerWithGrad(object):
@@ -146,7 +147,7 @@ class DDIMSamplerWithGrad(object):
 
                     if op_im is not None:
                         if hasattr(operation_func, 'cal_loss'):
-                            loss = operation_func.cal_loss(recons_image)
+                            loss = operation_func.cal_loss(recons_image, total_steps - i - 1, identifier, operation.folder)
                             selected = -1 * loss.sum()
                             print(f"Step {i}: loss: {loss.sum().item()}")
                             if loss.sum() < min_loss and i > 300:
@@ -221,3 +222,5 @@ class DDIMSamplerWithGrad(object):
 
 
         return img, start_zt
+
+
