@@ -234,25 +234,6 @@ class FaceRecognition(nn.Module):
         else:
             return out
 
-    def calculate_arcface_loss(self, emb1, emb2, s=64.0, m=0.5):
-        # Normalize embeddings
-        emb1_norm = F.normalize(emb1, p=2, dim=1)
-        emb2_norm = F.normalize(emb2, p=2, dim=1)
-
-        # Calculate cosine similarity
-        cos_similarity = F.cosine_similarity(emb1_norm, emb2_norm, dim=1)
-
-        # Calculate theta
-        theta = torch.acos(torch.clamp(cos_similarity, -1.0 + 1e-7, 1.0 - 1e-7))
-
-        # Calculate ArcFace logits
-        arcface_logits = s * torch.cos(theta + m)
-
-        # Calculate ArcFace loss (assuming same identity, target=1)
-        arcface_loss = -torch.log(torch.exp(arcface_logits) / (torch.exp(arcface_logits) + 1))
-
-        return arcface_loss
-
     def cal_loss(self, image):
         x = TF.resize(image, (256, 256), interpolation=TF.InterpolationMode.BICUBIC)
 
