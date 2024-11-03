@@ -117,7 +117,8 @@ def compare_embeddings(embedding1, embedding2, model_name):
     print()
 
 def plot_and_save_images(ground_truth_path, image1_path, image2_path, image3_path, vggface_sim1, vggface_sim2, vggface_sim3, casia_sim1, casia_sim2, casia_sim3, iresnet_sim1, iresnet_sim2, iresnet_sim3, i):
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(24, 6))
+    # Increase figure height to accommodate text
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(24, 10))
     
     ground_truth = plt.imread(ground_truth_path)
     img1 = plt.imread(image1_path)
@@ -140,9 +141,16 @@ def plot_and_save_images(ground_truth_path, image1_path, image2_path, image3_pat
     ax4.set_title(f"Arcface_ms2mv3")
     ax4.axis('off')
     
-    plt.suptitle(f"Image {i}\nVGGFACE sim: {vggface_sim1:.4f}, {vggface_sim2:.4f}, {vggface_sim3:.4f}\n" + 
-                f"CASIA sim: {casia_sim1:.4f}, {casia_sim2:.4f}, {casia_sim3:.4f}\n" +
-                f"iResNet sim: {iresnet_sim1:.4f}, {iresnet_sim2:.4f}, {iresnet_sim3:.4f}")
+    plt.suptitle(f"Image {i}", y=0.95, fontsize=14)
+    
+    similarity_text = (f"VGGFace similarities: {vggface_sim1:.4f}, {vggface_sim2:.4f}, {vggface_sim3:.4f}\n"
+                      f"CASIA similarities: {casia_sim1:.4f}, {casia_sim2:.4f}, {casia_sim3:.4f}\n"
+                      f"Arcface_ms2mv3 similarities: {iresnet_sim1:.4f}, {iresnet_sim2:.4f}, {iresnet_sim3:.4f}")
+    
+    plt.figtext(0.5, 0.05, similarity_text, ha='center', va='center', fontsize=12)
+    
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.9, bottom=0.25)
     
     os.makedirs("figures", exist_ok=True)
     plt.savefig(f"figures/comparison_{i}.png")
@@ -195,12 +203,16 @@ def main(image1_path, image2_path):
 if __name__ == "__main__":
     os.makedirs("figures/vggface", exist_ok=True)
     os.makedirs("figures/casia", exist_ok=True)
-    os.makedirs("figures/iresnet", exist_ok=True)
+    os.makedirs("figures/arcface_ms2mv3", exist_ok=True)
 
-    for i in range(20):
-        root1 = "exps/max_VGGface2"
-        root2 = "exps/max_VGG_CASIA"
-        root3 = "exps/max_Arcface"
+    for i in range(30):
+
+        # root1: VGGFace
+        # root2: CASIA
+        # root3: Arcface ms2mv3
+        root1 = "exps/double_guidance_CASIA"
+        root2 = "exps/double_guidance_VGGFACE"
+        root3 = "exps/double_guidance_arcface"
         ground_truth = f"data/face_data/img_0.png"
         image1 = f"{root1}/new_img_{i}.png"
         image2 = f"{root2}/new_img_{i}.png"
@@ -225,5 +237,5 @@ if __name__ == "__main__":
 
         # Create GIFs for iResNet
         iresnet_intermediate_folder = f"{root3}/intermediates/image{i}"
-        iresnet_gif_path = f"figures/iresnet/image_{i}.gif"
+        iresnet_gif_path = f"figures/arcface_ms2mv3/image_{i}.gif"
         create_gif(iresnet_intermediate_folder, iresnet_gif_path)

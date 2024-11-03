@@ -1,12 +1,13 @@
 python generate.py \
     --text "headshot of a woman" \
     --input_image ./data/face_data/img_0.png \
-    --optim_forward_guidance_wt 1.0 \
+    --optim_forward_guidance_wt 2.0 \
     --optim_num_steps 2 \
+    --trials 30 \
     --ddim_steps 500 \
     --seed 2 \
     --optim_forward_guidance \
     --fr_crop \
     --optim_original_conditioning \
-    --optim_folder ./exps/arcface_tests\
+    --optim_folder ./exps/double_guidance_arcface\
     --ckpt sd-v1-4.ckpt \

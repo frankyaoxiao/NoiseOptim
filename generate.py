@@ -243,29 +243,23 @@ class FaceRecognition(nn.Module):
 
         processed_image = self.get_faces(x, mtcnn_face=self.mtcnn_face)
         
-        # Create folder structure
         intermediate_folder = os.path.join(base_folder, 'intermediates', f'image{image_number}')
         os.makedirs(intermediate_folder, exist_ok=True)
         
-        # Save the processed image
         utils.save_image(processed_image, f'{intermediate_folder}/img_at_step_{500 - timestep}.png')
 
-        # Ensure both ground truth and processed image are 4D
         if self.ground_truth.dim() == 3:
             self.ground_truth = self.ground_truth.unsqueeze(0)
         if processed_image.dim() == 3:
             processed_image = processed_image.unsqueeze(0)
 
-        # Enable gradients for processed_image
         processed_image = processed_image.requires_grad_(True)
 
-        # Get embeddings for ground truth and input image
         with torch.no_grad():
             gt_emb1 = self.resnet1(self.ground_truth)
             gt_emb2 = self.resnet2(self.ground_truth)
             gt_emb3 = self.resnet3(self.ground_truth)
 
-        # Compute embeddings for processed_image without no_grad
         img_emb1 = self.resnet1(processed_image)
         img_emb2 = self.resnet2(processed_image)
         img_emb3 = self.resnet3(processed_image)
@@ -278,7 +272,7 @@ class FaceRecognition(nn.Module):
         print(f"Timestep {500 - timestep}: Loss for first model: {dist1.item()}")
         print(f"Timestep {500 - timestep}: Loss for second model: {dist2.item()}")
         print(f"Timestep {500 - timestep}: Loss for third model: {dist3.item()}")
-        # Minimize dist1, maximize dist2
+
         loss = (10 * (1 - dist3)) ** 2 + .25 * (10 * dist2) ** 2 + .25 * (10 * dist1) ** 2
         return loss
 
