@@ -4,9 +4,9 @@ python generate.py \
     --optim_forward_guidance_wt 1.0 \
     --optim_num_steps 2 \
     --ddim_steps 500 \
-    --seed 234 \
+    --seed 2 \
     --optim_forward_guidance \
     --fr_crop \
     --optim_original_conditioning \
-    --optim_folder ./exps/trial1 \
+    --optim_folder ./exps/arcface_tests\
     --ckpt sd-v1-4.ckpt \

@@ -5,6 +5,7 @@
 # Very specific stuff
 regular_face.png
 *.ckpt
+weights/
 
 # Data
 data/
@@ -13,6 +14,8 @@ data/
 exps/
 scripts/
 ongoing/
+figures/
+*.txt
 *.out
 
 # Byte-compiled / optimized / DLL files

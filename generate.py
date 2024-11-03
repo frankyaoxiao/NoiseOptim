@@ -13,6 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms.functional as TF
 from facenet_pytorch import MTCNN, InceptionResnetV1
+from models.iresnet import get_model
 from omegaconf import OmegaConf
 from PIL import Image
 from samplers.ddim_with_grad import DDIMSamplerWithGrad
@@ -127,9 +128,12 @@ class FaceRecognition(nn.Module):
         super().__init__()
         self.resnet1 = InceptionResnetV1(pretrained='vggface2').eval()
         self.resnet2 = InceptionResnetV1(pretrained='casia-webface').eval()
-        self.mtcnn = MTCNN(image_size=160, device='cuda')
+        self.resnet3 = get_model('r50', fp16=False)
+        self.resnet3.load_state_dict(torch.load('models/weights/ms2mv3_r50.pth'))
+        self.resnet3.eval()
+        self.mtcnn = MTCNN(image_size=112, device='cuda')
         self.crop = fr_crop
-        self.output_size = 160
+        self.output_size = 112
         self.mtcnn_face = mtcnn_face
 
         # Load and preprocess ground truth image
@@ -259,25 +263,29 @@ class FaceRecognition(nn.Module):
         with torch.no_grad():
             gt_emb1 = self.resnet1(self.ground_truth)
             gt_emb2 = self.resnet2(self.ground_truth)
+            gt_emb3 = self.resnet3(self.ground_truth)
 
         # Compute embeddings for processed_image without no_grad
         img_emb1 = self.resnet1(processed_image)
         img_emb2 = self.resnet2(processed_image)
+        img_emb3 = self.resnet3(processed_image)
 
         # Calculate losses
         dist1 = F.cosine_similarity(gt_emb1, img_emb1, dim=1)
         dist2 = F.cosine_similarity(gt_emb2, img_emb2, dim=1)
+        dist3 = F.cosine_similarity(gt_emb3, img_emb3, dim=1)
 
-        print(f"Timestep {timestep}: Loss for first model: {dist1.item()}")
-        print(f"Timestep {timestep}: Loss for second model: {dist2.item()}")
-
+        print(f"Timestep {500 - timestep}: Loss for first model: {dist1.item()}")
+        print(f"Timestep {500 - timestep}: Loss for second model: {dist2.item()}")
+        print(f"Timestep {500 - timestep}: Loss for third model: {dist3.item()}")
         # Minimize dist1, maximize dist2
-        loss = (10 * (1 - dist2)) ** 2 + .5 * (10 * dist1) ** 2
+        loss = (10 * (1 - dist3)) ** 2 + .25 * (10 * dist2) ** 2 + .25 * (10 * dist1) ** 2
         return loss
 
     def cuda(self):
         self.resnet1 = self.resnet1.cuda()
         self.resnet2 = self.resnet2.cuda()
+        self.resnet3 = self.resnet3.cuda()
         self.mtcnn = self.mtcnn.cuda()
         self.ground_truth = self.ground_truth.cuda()
         return self
