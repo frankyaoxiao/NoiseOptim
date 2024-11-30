@@ -72,7 +72,6 @@ class DDIMSamplerWithGrad(object):
         # sampling
         C, H, W = shape
         shape = (batch_size, C, H, W)
-        cond = conditioning
         min_loss = 1e9
 
 
@@ -125,14 +124,17 @@ class DDIMSamplerWithGrad(object):
                     img_in = img.detach().requires_grad_(True)
 
                     if operation.original_guidance:
-                        x_in = torch.cat([img_in] * 2)
-                        t_in = torch.cat([ts] * 2)
-                        c_in = torch.cat([unconditional_conditioning, cond])
-                        e_t_uncond, e_t = self.model.module.apply_model(x_in, t_in, c_in).chunk(2)
-                        e_t = e_t_uncond + unconditional_guidance_scale * (e_t - e_t_uncond)
-                        # del x_in
-                    else:
-                        e_t = self.model.module.apply_model(img_in, ts, cond)
+                        if len(conditioning) == 3:  # If we have a negative prompt
+                            x_in = torch.cat([img_in] * 3)  # Three copies of the input
+                            t_in = torch.cat([ts] * 3)
+                            e_t_uncond, e_t_neg, e_t = self.model.module.apply_model(x_in, t_in, conditioning).chunk(3)
+                            # Modified guidance formula incorporating negative prompt
+                            e_t = e_t_uncond + unconditional_guidance_scale * (e_t - e_t_uncond) - unconditional_guidance_scale * (e_t_neg - e_t_uncond)
+                        else:  # Original behavior
+                            x_in = torch.cat([img_in] * 2)
+                            t_in = torch.cat([ts] * 2)
+                            e_t_uncond, e_t = self.model.module.apply_model(x_in, t_in, conditioning).chunk(2)
+                            e_t = e_t_uncond + unconditional_guidance_scale * (e_t - e_t_uncond)
 
                     pred_x0 = (img_in - sqrt_one_minus_at * e_t) / a_t.sqrt()
                     recons_image = self.model.module.decode_first_stage_with_grad(pred_x0)
@@ -199,11 +201,11 @@ class DDIMSamplerWithGrad(object):
                     if operation.original_guidance:
                         x_in = torch.cat([img] * 2)
                         t_in = torch.cat([ts] * 2)
-                        c_in = torch.cat([unconditional_conditioning, cond])
+                        c_in = torch.cat([unconditional_conditioning, conditioning])
                         e_t_uncond, e_t = self.model.module.apply_model(x_in, t_in, c_in).chunk(2)
                         e_t = e_t_uncond + unconditional_guidance_scale * (e_t - e_t_uncond)
                     else:
-                        e_t = self.model.module.apply_model(img, ts, cond)
+                        e_t = self.model.module.apply_model(img, ts, conditioning)
 
                 with torch.no_grad():
                     # current prediction for x_0

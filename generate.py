@@ -411,6 +411,7 @@ def main():
     parser.add_argument("--optim_num_steps", nargs="+", default=[1], type=int)
     parser.add_argument('--text_type', type=int, default=1)
     parser.add_argument("--text", required=True)
+    parser.add_argument("--negative_prompt", required=False)
     parser.add_argument('--input_image', type=str, required=True, help="Path to the input image")
     parser.add_argument('--fr_crop', action='store_true')
     parser.add_argument('--center_face', action='store_true')
@@ -465,16 +466,22 @@ def main():
         utils.save_image((og_img_mask + 1) * 0.5, f'{results_folder}/og_img_cut.png')
         print(f"Image saved at {results_folder}/og_img_cut.png")
 
-    uc = None
-    if opt.scale != 1.0:
-        uc = model.module.get_learned_conditioning(1 * [""])
-    c = model.module.get_learned_conditioning(1 * [prompt])
+    c = model.module.get_learned_conditioning([prompt])
+    uc = model.module.get_learned_conditioning([""])  # unconditional (empty) prompt
+
+    if opt.negative_prompt:
+        n = model.module.get_learned_conditioning([opt.negative_prompt])  # negative prompt
+        # Concatenate all three conditions
+        c_in = torch.cat([uc, n, c])
+    else:
+        # Original behavior with just unconditional and conditional
+        c_in = torch.cat([uc, c])
 
     for multiple_tries in range(opt.trials):
         shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
         samples_ddim, start_zt = sampler.sample(
             S=opt.ddim_steps,
-            conditioning=c,
+            conditioning=c_in,
             batch_size=1,
             shape=shape,
             verbose=False,
