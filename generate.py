@@ -19,7 +19,6 @@ from PIL import Image
 from samplers.ddim_with_grad import DDIMSamplerWithGrad
 from torch.utils import data
 from torchvision import transforms, utils
-from torchvision.datasets import ImageFolder
 from util import instantiate_from_config, OptimizerDetails
 
 
@@ -273,7 +272,16 @@ class FaceRecognition(nn.Module):
         print(f"Timestep {500 - timestep}: Loss for second model: {dist2.item()}")
         print(f"Timestep {500 - timestep}: Loss for third model: {dist3.item()}")
 
-        loss = (10 * (1 - dist3)) ** 2 + .25 * (10 * dist2) ** 2 + .25 * (10 * dist1) ** 2
+        if hasattr(self, 'fr_model'):
+            if self.fr_model == 1:
+                loss = (10 * (1 - dist1)) ** 2 + .25 * (10 * dist2) ** 2 + .25 * (10 * dist3) ** 2
+            elif self.fr_model == 2:
+                loss = (10 * (1 - dist2)) ** 2 + .25 * (10 * dist1) ** 2 + .25 * (10 * dist3) ** 2
+            elif self.fr_model == 3:
+                loss = (10 * (1 - dist3)) ** 2 + .25 * (10 * dist1) ** 2 + .25 * (10 * dist2) ** 2
+        else:
+            loss = (10 * (1 - dist2)) ** 2 + .25 * (10 * dist1) ** 2 + .25 * (10 * dist3) ** 2
+            
         return loss
 
     def cuda(self):
@@ -293,6 +301,7 @@ def get_optimation_details(args):
     print(mtcnn_face)
 
     guidance_func = FaceRecognition(args.input_image, fr_crop=args.fr_crop, mtcnn_face=mtcnn_face).cuda()
+    guidance_func.fr_model = args.fr_model  # Add the fr_model parameter
     operation = OptimizerDetails()
 
     operation.num_steps = args.optim_num_steps
@@ -406,6 +415,12 @@ def main():
     parser.add_argument('--fr_crop', action='store_true')
     parser.add_argument('--center_face', action='store_true')
     parser.add_argument("--trials", default=20, type=int)
+    parser.add_argument(
+        "--fr_model",
+        type=int,
+        default=2,
+        help="Face recognition model to optimize (1, 2, or 3)",
+    )
 
     opt = parser.parse_args()
     results_folder = opt.optim_folder

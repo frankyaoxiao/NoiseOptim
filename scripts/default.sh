@@ -1,13 +1,14 @@
 python generate.py \
-    --text "headshot of a woman" \
+    --text "Ultra-realistic headshot of a person looking directly at the camera, detailed facial features, soft natural lighting, smooth skin, sharp focus, realistic proportions, centered composition, professional studio photography, only head in the frame" \
     --input_image ./data/face_data/img_0.png \
     --optim_forward_guidance_wt 2.0 \
     --optim_num_steps 2 \
-    --trials 30 \
+    --trials 10 \
     --ddim_steps 500 \
     --seed 2 \
     --optim_forward_guidance \
     --fr_crop \
     --optim_original_conditioning \
-    --optim_folder ./exps/double_guidance_arcface\
-    --ckpt sd-v1-4.ckpt \
+    --fr_model 3 \
+    --optim_folder /scratch1/fxiao/noise/newprompt_head\
+    --ckpt sd-v1-5.ckpt \

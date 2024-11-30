@@ -116,7 +116,7 @@ def compare_embeddings(embedding1, embedding2, model_name):
     #print(f"ArcFace loss: {arcface_loss:.4f}")
     print()
 
-def plot_and_save_images(ground_truth_path, image1_path, image2_path, image3_path, vggface_sim1, vggface_sim2, vggface_sim3, casia_sim1, casia_sim2, casia_sim3, iresnet_sim1, iresnet_sim2, iresnet_sim3, i):
+def plot_and_save_images(ground_truth_path, image1_path, image2_path, image3_path, vggface_sim1, vggface_sim2, vggface_sim3, casia_sim1, casia_sim2, casia_sim3, iresnet_sim1, iresnet_sim2, iresnet_sim3, i, path):
     # Increase figure height to accommodate text
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(24, 10))
     
@@ -151,9 +151,8 @@ def plot_and_save_images(ground_truth_path, image1_path, image2_path, image3_pat
     
     plt.tight_layout()
     plt.subplots_adjust(top=0.9, bottom=0.25)
-    
-    os.makedirs("figures", exist_ok=True)
-    plt.savefig(f"figures/comparison_{i}.png")
+    os.makedirs(path, exist_ok=True)
+    plt.savefig(f"{path}/comparison_{i}.png")
     plt.close()
 
 def create_gif(image_folder, output_path, duration=200):
@@ -201,18 +200,21 @@ def main(image1_path, image2_path):
     return vggface_sim, casia_sim, iresnet_sim
 
 if __name__ == "__main__":
-    os.makedirs("figures/vggface", exist_ok=True)
-    os.makedirs("figures/casia", exist_ok=True)
-    os.makedirs("figures/arcface_ms2mv3", exist_ok=True)
 
-    for i in range(30):
+    output_folder = f"/scratch1/fxiao/noise/figures/1"
+    os.makedirs(f"{output_folder}/vggface", exist_ok=True)
+    os.makedirs(f"{output_folder}/casia", exist_ok=True)
+    os.makedirs(f"{output_folder}/arcface_ms2mv3", exist_ok=True)
+
+    for i in range(10):
+        os.makedirs(output_folder, exist_ok=True)
 
         # root1: VGGFace
         # root2: CASIA
         # root3: Arcface ms2mv3
-        root1 = "exps/double_guidance_CASIA"
-        root2 = "exps/double_guidance_VGGFACE"
-        root3 = "exps/double_guidance_arcface"
+        root1 = "/scratch1/fxiao/noise/1_1"
+        root2 = "/scratch1/fxiao/noise/1_2"
+        root3 = "/scratch1/fxiao/noise/1_3"
         ground_truth = f"data/face_data/img_0.png"
         image1 = f"{root1}/new_img_{i}.png"
         image2 = f"{root2}/new_img_{i}.png"
@@ -221,21 +223,33 @@ if __name__ == "__main__":
         vggface_sim1, casia_sim1, iresnet_sim_1 = main(ground_truth, image1)
         vggface_sim2, casia_sim2, iresnet_sim_2 = main(ground_truth, image2)
         vggface_sim3, casia_sim3, iresnet_sim_3 = main(ground_truth, image3)
-
-        if vggface_sim1 is not None and vggface_sim2 is not None and vggface_sim3 is not None:
-            plot_and_save_images(ground_truth, image1, image2, image3, vggface_sim1, vggface_sim2, vggface_sim3, casia_sim1, casia_sim2, casia_sim3, iresnet_sim_1, iresnet_sim_2, iresnet_sim_3, i)
+        if vggface_sim1 is not None and vggface_sim2 is not None and vggface_sim3 is not None: 
+            plot_and_save_images(ground_truth, image1, image2, image3, vggface_sim1, vggface_sim2, vggface_sim3, casia_sim1, casia_sim2, casia_sim3, iresnet_sim_1, iresnet_sim_2, iresnet_sim_3, i, output_folder)
+            print(f"VGG Max Run")
+            print(f"VGGFace similarity: {vggface_sim1:.4f}")
+            print(f"CASIA similarity: {casia_sim1:.4f}")    
+            print(f"iResNet similarity: {iresnet_sim_1:.4f}")
+            print(f"Casia Face 2")
+            print(f"VGGFace similarity: {vggface_sim2:.4f}")
+            print(f"CASIA similarity: {casia_sim2:.4f}")    
+            print(f"iResNet similarity: {iresnet_sim_2:.4f}")
+            print(f"iResNet Face 3")
+            print(f"VGGFace similarity: {vggface_sim3:.4f}")
+            print(f"CASIA similarity: {casia_sim3:.4f}")    
+            print(f"iResNet similarity: {iresnet_sim_3:.4f}")
+    
 
         # Create GIFs for VGGFace
         vggface_intermediate_folder = f"{root1}/intermediates/image{i}"
-        vggface_gif_path = f"figures/vggface/image_{i}.gif"
+        vggface_gif_path = f"{output_folder}/vggface/image_{i}.gif"
         create_gif(vggface_intermediate_folder, vggface_gif_path)
 
         # Create GIFs for CASIA
         casia_intermediate_folder = f"{root2}/intermediates/image{i}"
-        casia_gif_path = f"figures/casia/image_{i}.gif"
+        casia_gif_path = f"{output_folder}/casia/image_{i}.gif"
         create_gif(casia_intermediate_folder, casia_gif_path)
 
         # Create GIFs for iResNet
         iresnet_intermediate_folder = f"{root3}/intermediates/image{i}"
-        iresnet_gif_path = f"figures/arcface_ms2mv3/image_{i}.gif"
+        iresnet_gif_path = f"{output_folder}/arcface_ms2mv3/image_{i}.gif"
         create_gif(iresnet_intermediate_folder, iresnet_gif_path)
