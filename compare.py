@@ -212,17 +212,20 @@ if __name__ == "__main__":
         # root1: VGGFace
         # root2: CASIA
         # root3: Arcface ms2mv3
-        root1 = "/scratch1/fxiao/noise/1_1"
-        root2 = "/scratch1/fxiao/noise/1_2"
-        root3 = "/scratch1/fxiao/noise/1_3"
-        ground_truth = f"data/face_data/img_0.png"
+        root1 = "/scratch1/fxiao/noise/2_3_test_1"
+        #root2 = "/scratch1/fxiao/noise/1_2"
+        #root3 = "/scratch1/fxiao/noise/1_3"
+        ground_truth = f"data/face_data/img_1.jpg"
         image1 = f"{root1}/new_img_{i}.png"
-        image2 = f"{root2}/new_img_{i}.png"
-        image3 = f"{root3}/new_img_{i}.png"
+        #image2 = f"{root2}/new_img_{i}.png"
+        #image3 = f"{root3}/new_img_{i}.png"
         print(f"IMAGE NUMBER {i}")
         vggface_sim1, casia_sim1, iresnet_sim_1 = main(ground_truth, image1)
-        vggface_sim2, casia_sim2, iresnet_sim_2 = main(ground_truth, image2)
-        vggface_sim3, casia_sim3, iresnet_sim_3 = main(ground_truth, image3)
+        if vggface_sim1 is not None and casia_sim1 is not None and iresnet_sim_1 is not None:
+            print(f"VGGFace similarity: {vggface_sim1:.4f}")
+            print(f"CASIA similarity: {casia_sim1:.4f}")    
+            print(f"iResNet similarity: {iresnet_sim_1:.4f}")
+        '''
         if vggface_sim1 is not None and vggface_sim2 is not None and vggface_sim3 is not None: 
             plot_and_save_images(ground_truth, image1, image2, image3, vggface_sim1, vggface_sim2, vggface_sim3, casia_sim1, casia_sim2, casia_sim3, iresnet_sim_1, iresnet_sim_2, iresnet_sim_3, i, output_folder)
             print(f"VGG Max Run")
@@ -253,3 +256,4 @@ if __name__ == "__main__":
         iresnet_intermediate_folder = f"{root3}/intermediates/image{i}"
         iresnet_gif_path = f"{output_folder}/arcface_ms2mv3/image_{i}.gif"
         create_gif(iresnet_intermediate_folder, iresnet_gif_path)
+        '''

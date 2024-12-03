@@ -116,10 +116,11 @@ class DDIMSamplerWithGrad(object):
             criterion = operation.loss_func
             other_criterion = operation.other_criterion
 
+            # Only apply guidance after first 100 steps
+            apply_guidance = i >= 0
+
             for j in range(num_steps):
-
-                if operation.guidance_3:
-
+                if operation.guidance_3 and apply_guidance:  # Modified condition here
                     torch.set_grad_enabled(True)
                     img_in = img.detach().requires_grad_(True)
 
@@ -135,6 +136,8 @@ class DDIMSamplerWithGrad(object):
                             t_in = torch.cat([ts] * 2)
                             e_t_uncond, e_t = self.model.module.apply_model(x_in, t_in, conditioning).chunk(2)
                             e_t = e_t_uncond + unconditional_guidance_scale * (e_t - e_t_uncond)
+                    else:
+                        e_t = self.model.module.apply_model(img_in, ts, conditioning)
 
                     pred_x0 = (img_in - sqrt_one_minus_at * e_t) / a_t.sqrt()
                     recons_image = self.model.module.decode_first_stage_with_grad(pred_x0)
@@ -152,9 +155,14 @@ class DDIMSamplerWithGrad(object):
                             loss = operation_func.cal_loss(recons_image, total_steps - i - 1, identifier, operation.folder)
                             selected = -1 * loss.sum()
                             print(f"Step {i}: loss: {loss.sum().item()}")
-                            if loss.sum() < min_loss and i > 300:
+                            if loss.sum() < min_loss and i > 400:
                                 min_loss = loss.sum()
-                                utils.save_image(recons_image, f'{operation.folder}/min_loss_image_{identifier}.png')
+                                normalized_image = torch.clamp((recons_image + 1.0) / 2.0, min=0.0, max=1.0)
+                                utils.save_image(normalized_image, f'{operation.folder}/min_loss_image_{identifier}.png')
+                                # Log the minimum loss
+                                log_path = os.path.join(operation.folder, 'generation_log.txt')
+                                with open(log_path, 'a') as f:
+                                    f.write(f"Image {identifier} - Minimum Loss: {min_loss.item():.6f} at step {i}\n")
                         elif other_criterion != None:
                             selected = -1 * other_criterion(op_im, operated_image)
                             print(f"Step {i}: other_criterion was used")
@@ -199,11 +207,17 @@ class DDIMSamplerWithGrad(object):
 
                 else:
                     if operation.original_guidance:
-                        x_in = torch.cat([img] * 2)
-                        t_in = torch.cat([ts] * 2)
-                        c_in = torch.cat([unconditional_conditioning, conditioning])
-                        e_t_uncond, e_t = self.model.module.apply_model(x_in, t_in, c_in).chunk(2)
-                        e_t = e_t_uncond + unconditional_guidance_scale * (e_t - e_t_uncond)
+                        if len(conditioning) == 3:  # If we have a negative prompt
+                            x_in = torch.cat([img] * 3)  # Three copies of the input
+                            t_in = torch.cat([ts] * 3)
+                            e_t_uncond, e_t_neg, e_t = self.model.module.apply_model(x_in, t_in, conditioning).chunk(3)
+                            # Modified guidance formula incorporating negative prompt
+                            e_t = e_t_uncond + unconditional_guidance_scale * (e_t - e_t_uncond) - unconditional_guidance_scale * (e_t_neg - e_t_uncond)
+                        else:  # Original behavior
+                            x_in = torch.cat([img] * 2)
+                            t_in = torch.cat([ts] * 2)
+                            e_t_uncond, e_t = self.model.module.apply_model(x_in, t_in, conditioning).chunk(2)
+                            e_t = e_t_uncond + unconditional_guidance_scale * (e_t - e_t_uncond)
                     else:
                         e_t = self.model.module.apply_model(img, ts, conditioning)
 

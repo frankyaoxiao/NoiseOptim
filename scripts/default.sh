@@ -1,14 +1,15 @@
 python generate.py \
-    --text "Ultra-realistic headshot of a person looking directly at the camera, detailed facial features, soft natural lighting, smooth skin, sharp focus, realistic proportions, centered composition, professional studio photography, only head in the frame" \
-    --input_image ./data/face_data/img_0.png \
+    --text "Ultra-realistic headshot of a person looking directly at the camera, centered composition, professional studio lighting, smooth skin texture, sharp focus, realistic proportions, smooth background blur, natural and detailed facial features, only head and shoulders in the frame, neutral expression, soft and even lighting, minimal shadows" \
+    --negative_prompt "Full body, distorted proportions, blurry, cartoonish, side profiles, exaggerated expressions, harsh lighting, cluttered background, multiple heads, unrealistic features, low resolution" \
+    --input_image ./data/face_data/img_1.jpg \
     --optim_forward_guidance_wt 2.0 \
     --optim_num_steps 2 \
     --trials 10 \
     --ddim_steps 500 \
-    --seed 2 \
+    --seed 0 \
     --optim_forward_guidance \
     --fr_crop \
     --optim_original_conditioning \
     --fr_model 3 \
-    --optim_folder /scratch1/fxiao/noise/newprompt_head\
-    --ckpt sd-v1-5.ckpt \
+    --optim_folder /scratch1/fxiao/noise/2_3_newerprompt_2 \
+    --ckpt sd-v1-5.ckpt

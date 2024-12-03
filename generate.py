@@ -427,6 +427,16 @@ def main():
     results_folder = opt.optim_folder
     create_folder(results_folder)
 
+    # Create log file and write options
+    log_path = os.path.join(results_folder, 'generation_log.txt')
+    with open(log_path, 'w') as f:
+        f.write("Generation Options:\n")
+        f.write("-----------------\n")
+        for arg, value in sorted(vars(opt).items()):
+            f.write(f"{arg}: {value}\n")
+        f.write("\nGeneration Results:\n")
+        f.write("-----------------\n")
+
     set_seed(opt.seed)
 
     config = OmegaConf.load(f"{opt.config}")
