@@ -10,6 +10,7 @@ import argparse
 import matplotlib.pyplot as plt
 import os
 import glob
+import numpy as np
 
 def load_image(image_path):
     image = Image.open(image_path).convert('RGB')
@@ -58,8 +59,6 @@ def get_faces(x, mtcnn):
     img = img.permute(0, 3, 1, 2)
     faces = extract_face(img, batch_boxes, mtcnn)
     return faces
-
-
 
 def get_embedding(image, mtcnn, resnet, device, id):
     #x = TF.resize(image, (256, 256), interpolation=TF.InterpolationMode.BICUBIC)
@@ -120,10 +119,11 @@ def plot_and_save_images(ground_truth_path, image1_path, image2_path, image3_pat
     # Increase figure height to accommodate text
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(24, 10))
     
-    ground_truth = plt.imread(ground_truth_path)
-    img1 = plt.imread(image1_path)
-    img2 = plt.imread(image2_path)
-    img3 = plt.imread(image3_path)
+    # Load images using PIL and convert to numpy arrays for matplotlib
+    ground_truth = np.array(Image.open(ground_truth_path))
+    img1 = np.array(Image.open(image1_path))
+    img2 = np.array(Image.open(image2_path))
+    img3 = np.array(Image.open(image3_path))
     
     ax1.imshow(ground_truth)
     ax1.set_title("Ground Truth")
@@ -201,7 +201,7 @@ def main(image1_path, image2_path):
 
 if __name__ == "__main__":
 
-    output_folder = f"/scratch1/fxiao/noise/figures/1"
+    output_folder = f"/scratch1/fxiao/noise/figures/2"
     os.makedirs(f"{output_folder}/vggface", exist_ok=True)
     os.makedirs(f"{output_folder}/casia", exist_ok=True)
     os.makedirs(f"{output_folder}/arcface_ms2mv3", exist_ok=True)
@@ -212,15 +212,18 @@ if __name__ == "__main__":
         # root1: VGGFace
         # root2: CASIA
         # root3: Arcface ms2mv3
-        root1 = "/scratch1/fxiao/noise/2_3_test_1"
-        #root2 = "/scratch1/fxiao/noise/1_2"
-        #root3 = "/scratch1/fxiao/noise/1_3"
+        root1 = "/scratch1/fxiao/noise/2_1_final"
+        root2 = "/scratch1/fxiao/noise/2_2_final"
+        root3 = "/scratch1/fxiao/noise/2_3_final"
         ground_truth = f"data/face_data/img_1.jpg"
         image1 = f"{root1}/new_img_{i}.png"
-        #image2 = f"{root2}/new_img_{i}.png"
-        #image3 = f"{root3}/new_img_{i}.png"
+        image2 = f"{root2}/new_img_{i}.png"
+        image3 = f"{root3}/new_img_{i}.png"
         print(f"IMAGE NUMBER {i}")
         vggface_sim1, casia_sim1, iresnet_sim_1 = main(ground_truth, image1)
+        vggface_sim2, casia_sim2, iresnet_sim_2 = main(ground_truth, image2)
+        vggface_sim3, casia_sim3, iresnet_sim_3 = main(ground_truth, image3)
+        '''
         if vggface_sim1 is not None and casia_sim1 is not None and iresnet_sim_1 is not None:
             print(f"VGGFace similarity: {vggface_sim1:.4f}")
             print(f"CASIA similarity: {casia_sim1:.4f}")    
@@ -256,4 +259,3 @@ if __name__ == "__main__":
         iresnet_intermediate_folder = f"{root3}/intermediates/image{i}"
         iresnet_gif_path = f"{output_folder}/arcface_ms2mv3/image_{i}.gif"
         create_gif(iresnet_intermediate_folder, iresnet_gif_path)
-        '''

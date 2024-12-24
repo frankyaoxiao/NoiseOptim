@@ -274,13 +274,13 @@ class FaceRecognition(nn.Module):
 
         if hasattr(self, 'fr_model'):
             if self.fr_model == 1:
-                loss = (10 * (1 - dist1)) ** 2 + .25 * (10 * dist2) ** 2 + .25 * (10 * dist3) ** 2
+                loss = (10 * (1 - dist1)) ** 2 + .5 * (10 * dist2) ** 2 + .5 * (10 * dist3) ** 2
             elif self.fr_model == 2:
-                loss = (10 * (1 - dist2)) ** 2 + .25 * (10 * dist1) ** 2 + .25 * (10 * dist3) ** 2
+                loss = (10 * (1 - dist2)) ** 2 + .5 * (10 * dist1) ** 2 + .5 * (10 * dist3) ** 2
             elif self.fr_model == 3:
-                loss = (10 * (1 - dist3)) ** 2 + .25 * (10 * dist1) ** 2 + .25 * (10 * dist2) ** 2
+                loss = (10 * (1 - dist3)) ** 2 + .5 * (10 * dist1) ** 2 + .5 * (10 * dist2) ** 2
         else:
-            loss = (10 * (1 - dist2)) ** 2 + .25 * (10 * dist1) ** 2 + .25 * (10 * dist3) ** 2
+            loss = (10 * (1 - dist2)) ** 2 + .5 * (10 * dist1) ** 2 + .5 * (10 * dist3) ** 2
             
         return loss
 

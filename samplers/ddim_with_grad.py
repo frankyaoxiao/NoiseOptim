@@ -116,8 +116,7 @@ class DDIMSamplerWithGrad(object):
             criterion = operation.loss_func
             other_criterion = operation.other_criterion
 
-            # Only apply guidance after first 100 steps
-            apply_guidance = i >= 0
+            apply_guidance = i >= 20 
 
             for j in range(num_steps):
                 if operation.guidance_3 and apply_guidance:  # Modified condition here
